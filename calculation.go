@@ -21,22 +21,28 @@ func main() {
 	step = 1.0
 
 	idles := GenerateCardsetsIdle()
+	chargers := GenerateCardsetsIdle()
 	for _, i := range idles {
 		fmt.Println("============ ", i.a.val, " ", i.b.val)
-		generateDataSetBySet(i.a.val, i.b.val, 3, 13)
+		for _, j := range chargers {
+			generateDataSetBySet(i.a.val, i.b.val, j.a.val, j.b.val)
+		}
+
 	}
 
-	chargers := GenerateCardsetsIdle()
 	// calculate probability
+	// 8281 is correct
+	var sum int
 	var f float64
 	fmt.Println("< calculation start >")
 	for _, i := range idles {
 		for _, j := range chargers {
-
+			sum++
 			f += calculatePP(i, j)
 		}
 	}
 	fmt.Println(f)
+	fmt.Println(sum)
 }
 
 func totalMinus(f float64, i int) float64 {
@@ -269,6 +275,7 @@ func GenerateCardsetsIdle() (res []*Cardset) {
 }
 
 func generateDataSetBySet(a, b int, c, d int) {
+	// todo : mark each loop a unique dataset
 	// a>b
 	// c>d
 	idle := &Cardset{
@@ -302,18 +309,17 @@ func generateDataSetBySet(a, b int, c, d int) {
 	for _, v := range idleset {
 		endset := charger.andCalculate(v)
 		for _, end := range endset {
+			calculatePP(end, v)
 			fmt.Println("闲家：", v.String(), " 庄家：", end.String())
 		}
 	}
 }
 
 func calculatePP(charger, idle *Cardset) float64 {
-
+	var final float64
 	var mid []int
 	mid = append(mid, idle.a.val)
 	mid = append(mid, idle.b.val)
-	mid = append(mid, charger.a.val)
-	mid = append(mid, charger.b.val)
 	// a - b - c - d - idle_and - charger_and
 	var f1 float64
 	var f2 float64
@@ -321,47 +327,37 @@ func calculatePP(charger, idle *Cardset) float64 {
 	f2 = 1
 	if idle.a.val == idle.b.val {
 		f1 = f1 * ((32 / total) * (31 / totalMinus(total, 1)))
-		if charger.a.val == charger.b.val {
+	} else {
+		f1 = f1 * ((32 / total) * (32 / totalMinus(total, 1))) * 2
+	}
 
-			if charger.a.val == idle.a.val {
-				f2 = f2 * ((30 / totalMinus(total, 2)) * (29 / totalMinus(total, 3)))
-			} else {
-				f2 = f2 * ((32 / totalMinus(total, 2)) * (32 / totalMinus(total, 3)))
-			}
+	atimes := calculateDuplicate(mid, charger.a.val)
+	mid = append(mid, charger.a.val)
+	btimes := calculateDuplicate(mid, charger.b.val)
+	f2 = f2 * (((32 - float64(atimes)) / totalMinus(total, 2)) * ((32 - float64(btimes)) / totalMinus(total, 3)))
+	if charger.a.val != charger.b.val {
+		f2 = f2 * 2
+	}
+	fmt.Println(idle.a.val, " ", idle.b.val, " ", charger.a.val, " ", charger.b.val, " ", f1*f2, " atimes ", atimes, "btimes ", btimes)
+	final = f1 * f2
 
-		} else {
-
-			if charger.a.val == idle.a.val {
-				f2 = f2 * ((30 / totalMinus(total, 2)) * (32 / totalMinus(total, 3)))
-			} else {
-				f2 = f2 * ((32 / totalMinus(total, 2)) * (32 / totalMinus(total, 3)))
-			}
-
+	var ctimes int
+	var dtimes int
+	if idle.and != nil {
+		ctimes = calculateDuplicate(mid, idle.and.val)
+		mid = append(mid, idle.and.val)
+		final = final * ((32 - float64(ctimes)) / totalMinus(total, 4))
+		if charger.and != nil {
+			dtimes = calculateDuplicate(mid, charger.and.val)
+			final = final * ((32 - float64(dtimes)) / totalMinus(total, 5))
 		}
 	} else {
-		f1 = f1 * ((32 / total) * (32 / totalMinus(total, 1)))
-		if charger.a.val == charger.b.val {
-
-			if charger.a.val == idle.a.val {
-				f2 = f2 * ((31 / totalMinus(total, 2)) * (30 / totalMinus(total, 3)))
-			} else {
-				f2 = f2 * ((32 / totalMinus(total, 2)) * (31 / totalMinus(total, 3)))
-			}
-
-		} else {
-
-			if charger.a.val == idle.a.val {
-				f2 = f2 * ((31 / totalMinus(total, 2)) * (30 / totalMinus(total, 3)))
-			} else {
-				ca := float64(calculateDuplicate(mid, charger.a.val) - 1)
-				cb := float64(calculateDuplicate(mid, charger.b.val) - 1)
-				f2 = f2 * ((32 - ca/totalMinus(total, 2)) * ((32 - cb) / totalMinus(total, 3)))
-			}
-
+		if charger.and != nil {
+			dtimes = calculateDuplicate(mid, charger.and.val)
+			final = final * ((32 - float64(dtimes)) / totalMinus(total, 4))
 		}
 	}
-	fmt.Println(idle.a.val, " ", idle.b.val, " ", charger.a.val, " ", charger.b.val, " ", f1*f2)
-	return f1 * f2
+	return final
 }
 
 func calculateDuplicate(source []int, input int) int {
