@@ -15,6 +15,9 @@ var total float64
 var step float64
 
 func main() {
+	var chargerWin float64
+	var chargerdie float64
+	var chargerlose float64
 
 	total = 13.0 * 32.0
 
@@ -25,7 +28,10 @@ func main() {
 	for _, i := range idles {
 		fmt.Println("============ ", i.a.val, " ", i.b.val)
 		for _, j := range chargers {
-			generateDataSetBySet(i.a.val, i.b.val, j.a.val, j.b.val)
+			_, w, d, l := generateDataSetBySet(i.a.val, i.b.val, j.a.val, j.b.val)
+			chargerWin += w
+			chargerdie += d
+			chargerlose += l
 		}
 
 	}
@@ -34,6 +40,7 @@ func main() {
 	// 8281 is correct
 	var sum int
 	var f float64
+
 	fmt.Println("< calculation start >")
 	for _, i := range idles {
 		for _, j := range chargers {
@@ -41,8 +48,11 @@ func main() {
 			f += calculatePP(i, j)
 		}
 	}
-	fmt.Println(f)
-	fmt.Println(sum)
+	fmt.Println("all types sum to ", f)
+	fmt.Println("the root types of base card range is ", sum)
+
+	fmt.Println("the result win is ", chargerWin, " chargerlose ", chargerlose, " chargerdie ", chargerdie)
+	fmt.Println("sum is ", chargerWin+chargerlose+chargerdie)
 }
 
 func totalMinus(f float64, i int) float64 {
@@ -274,7 +284,7 @@ func GenerateCardsetsIdle() (res []*Cardset) {
 	return
 }
 
-func generateDataSetBySet(a, b int, c, d int) {
+func generateDataSetBySet(a, b int, c, d int) (all, win, die, lose float64) {
 	// todo : mark each loop a unique dataset
 	// a>b
 	// c>d
@@ -304,15 +314,36 @@ func generateDataSetBySet(a, b int, c, d int) {
 		and: nil,
 	}
 
+	dep := calculatePP(charger, idle)
+
+	var count int
+
 	idleset := idle.andCalculate(charger)
 
 	for _, v := range idleset {
 		endset := charger.andCalculate(v)
 		for _, end := range endset {
-			calculatePP(end, v)
+			m := calculatePPSuffix(end, v)
+			all = all + m
+			res := v.compare(end)
+			if res == "le" {
+				win += dep * m
+			}
+			if res == "eq" {
+				die += dep * m
+			}
+			if res == "la" {
+				lose += dep * m
+			}
 			fmt.Println("闲家：", v.String(), " 庄家：", end.String())
+			if end.and != nil {
+				count++
+			}
 		}
 	}
+
+	fmt.Println("all is ", all, " idle and sum is ", len(idleset), " charger and sum is ", count, " dep is ", dep)
+	return
 }
 
 func calculatePP(charger, idle *Cardset) float64 {
@@ -340,6 +371,33 @@ func calculatePP(charger, idle *Cardset) float64 {
 	}
 	fmt.Println(idle.a.val, " ", idle.b.val, " ", charger.a.val, " ", charger.b.val, " ", f1*f2, " atimes ", atimes, "btimes ", btimes)
 	final = f1 * f2
+
+	var ctimes int
+	var dtimes int
+	if idle.and != nil {
+		ctimes = calculateDuplicate(mid, idle.and.val)
+		mid = append(mid, idle.and.val)
+		final = final * ((32 - float64(ctimes)) / totalMinus(total, 4))
+		if charger.and != nil {
+			dtimes = calculateDuplicate(mid, charger.and.val)
+			final = final * ((32 - float64(dtimes)) / totalMinus(total, 5))
+		}
+	} else {
+		if charger.and != nil {
+			dtimes = calculateDuplicate(mid, charger.and.val)
+			final = final * ((32 - float64(dtimes)) / totalMinus(total, 4))
+		}
+	}
+	return final
+}
+func calculatePPSuffix(charger, idle *Cardset) float64 {
+	var final float64
+	final = 1.0
+	var mid []int
+	mid = append(mid, idle.a.val)
+	mid = append(mid, idle.b.val)
+	mid = append(mid, charger.a.val)
+	mid = append(mid, charger.b.val)
 
 	var ctimes int
 	var dtimes int
