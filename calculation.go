@@ -76,15 +76,15 @@ type Cardset struct {
 func (cs *Cardset) compare(in *Cardset) string {
 	volumeA := 0
 	if cs.and != nil {
-		volumeA = (cs.a.val + cs.b.val + cs.and.val) % 10
+		volumeA = (cs.a.getVal() + cs.b.getVal() + cs.and.getVal()) % 10
 	} else {
-		volumeA = (cs.a.val + cs.b.val) % 10
+		volumeA = (cs.a.getVal() + cs.b.getVal()) % 10
 	}
 	volumeB := 0
 	if in.and != nil {
-		volumeB = (in.a.val + in.b.val + in.and.val) % 10
+		volumeB = (in.a.getVal() + in.b.getVal() + in.and.getVal()) % 10
 	} else {
-		volumeB = (in.a.val + in.b.val) % 10
+		volumeB = (in.a.getVal() + in.b.getVal()) % 10
 	}
 	if volumeA < volumeB {
 		return "le"
